@@ -2,20 +2,51 @@ package de.thro.inf.prg3.a11;
 
 import de.thro.inf.prg3.a11.openmensa.OpenMensaAPI;
 import de.thro.inf.prg3.a11.openmensa.OpenMensaAPIService;
+import de.thro.inf.prg3.a11.openmensa.model.Canteen;
+import de.thro.inf.prg3.a11.openmensa.model.Meal;
+import de.thro.inf.prg3.a11.openmensa.model.PageInfo;
+import retrofit2.Response;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Locale;
-import java.util.Scanner;
+import java.util.*;
 
-public enum MenuStrategy {
+public enum MenuStrategy  {
 
 	SHOW_CANTEENS {
 		@Override
 		void execute() {
+
+
 			System.out.print("Fetching canteens [");
+
+			openMensaAPI.getCanteens().thenApply(response -> {
+					System.out.print("Canteen Liste erstellt und befüllt");
+					PageInfo pageInfo = PageInfo.extractFromResponse(response);
+					List<Canteen> Canteens = new ArrayList<Canteen>();
+
+					for(int i = 0; i < pageInfo.getTotalCountOfPages(); i++){
+						try {
+							Canteens.addAll(openMensaAPI.getCanteens(i).get());
+						}catch(Exception e){
+							System.out.println("Ooops: " + e.toString());
+						}
+
+
+					}
+
+
+				return Canteens;
+				}).thenApply(canteens -> {
+				System.out.println("Sortieren der Liste, nach der ID");
+					canteens.sort(Comparator.comparing(c -> c.getId()));
+					return canteens;
+
+			}).thenAccept(canteens -> {
+				for (Canteen c: canteens){
+					System.out.println("Kantinen id"+c.getId()+"Kantine:"+c);
+				}
+			});
 			/* TODO fetch all canteens and print them to STDOUT
 			 * at first get a page without an index to be able to extract the required pagination information
 			 * afterwards you can iterate the remaining pages
@@ -31,6 +62,16 @@ public enum MenuStrategy {
 	SHOW_MEALS {
 		@Override
 		void execute() {
+
+			openMensaAPI.getCanteenState(currentCanteenId,dateFormat.format(currentDate.getTime())).thenApply(state->{
+               if(state != null&&!state.isClosed()){
+               	return openMensaAPI.getMeals(currentCanteenId,dateFormat.format(currentDate.getTime()));
+			   }
+
+               List<Meal> mealsList = new ArrayList<Meal>();
+               return mealsList;
+			});
+
 			/* TODO fetch all meals for the currently selected canteen
 			 * to avoid errors retrieve at first the state of the canteen and check if the canteen is opened at the selected day
 			 * don't forget to check if a canteen was selected previously! */
